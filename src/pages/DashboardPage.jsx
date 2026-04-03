@@ -39,8 +39,10 @@ const DashboardPage = () => {
   const { user, trustScore, riskLevel, sessionEvents } = useAuth();
   const navigate = useNavigate();
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [showAnomalyModal, setShowAnomalyModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Real-time transaction filtering
   const recentTransactions = dummyTransactions.filter(tx => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
@@ -50,6 +52,7 @@ const DashboardPage = () => {
       String(Math.abs(tx.amount)).includes(q)
     );
   }).slice(0, 5);
+
   const [chartData, setChartData] = useState({
     labels: Array.from({ length: 30 }, (_, i) => i),
     datasets: [
@@ -69,8 +72,15 @@ const DashboardPage = () => {
   // Security Freeze active defense trigger!
   useEffect(() => {
     if (riskLevel === 'danger') {
+      setShowAnomalyModal(true);
       const reason = sessionEvents.length > 0 ? sessionEvents[0].message : 'Critical behavioural anomaly detected';
-      navigate('/reauth', { state: { returnPath: '/dashboard', reason: reason } });
+      
+      // Wait 3 seconds for the user to see the "Freeze" modal before redirecting
+      const timer = setTimeout(() => {
+        navigate('/reauth', { state: { returnPath: '/dashboard', reason: reason } });
+      }, 3000);
+
+      return () => clearTimeout(timer);
     }
   }, [riskLevel, sessionEvents, navigate]);
 
@@ -129,7 +139,7 @@ const DashboardPage = () => {
               animate={{ opacity: 1, y: 0 }}
               className="font-sora font-extrabold text-3xl md:text-4xl mb-2"
             >
-              Good morning, {user?.name ? (user.name.includes('.') || user.name.includes('_') ? user.name.split(/[._]/)[0] : user.name.split(' ')[0]) : 'Guest'}
+              Good morning, {user?.name ? (user.name.includes('.') || user.name.includes('_') ? user.name.split(/[._]/)[0] : user.name.split(' ')[0]) : 'User'}
             </motion.h1>
             <div className="flex items-center space-x-2 text-secondary font-medium">
               <ShieldCheck size={16} className="text-trust-safe" />
@@ -140,15 +150,15 @@ const DashboardPage = () => {
           <div className="flex items-center space-x-4">
              <div className="hidden lg:flex items-center bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-secondary focus-within:border-accent transition-all">
               <Search size={18} className="mr-3 flex-shrink-0" />
-              <input
-                type="text"
-                placeholder="Search transactions..."
+              <input 
+                type="text" 
+                placeholder="Search transactions..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="bg-transparent border-none outline-none text-sm w-48 text-white placeholder:text-secondary"
+                className="bg-transparent border-none outline-none text-sm w-48 text-white placeholder:text-secondary" 
               />
               {searchQuery && (
-                <button onClick={() => setSearchQuery('')} className="ml-2 hover:text-white transition-colors flex-shrink-0">
+                <button onClick={() => setSearchQuery('')} className="ml-2 hover:text-white transition-colors">
                   <X size={14} />
                 </button>
               )}
@@ -223,7 +233,7 @@ const DashboardPage = () => {
             <GlassCard className="flex-1 border-accent/20 bg-accent/5">
                <h4 className="font-sora font-bold mb-3">Security Insights</h4>
                <p className="text-sm text-secondary mb-4 leading-relaxed">
-                 Your typing rhythm is consistent with your 30-day baseline. Verification will be waived for transfers under ₹1,00,000.
+                 Your typing rhythm is consistent with your 30-day baseline. Verification will be waived for transfers under ₹1,0,000.
                </p>
                <button className="text-xs font-bold text-accent uppercase tracking-widest hover:underline">View Deep Profile</button>
             </GlassCard>
@@ -238,8 +248,8 @@ const DashboardPage = () => {
                 <h3 className="font-sora font-bold text-xl">Recent Transactions</h3>
                 {searchQuery && (
                   <p className="text-xs text-secondary mt-1">
-                    {recentTransactions.length > 0
-                      ? `${recentTransactions.length} result${recentTransactions.length > 1 ? 's' : ''} for "${searchQuery}"`
+                    {recentTransactions.length > 0 
+                      ? `${recentTransactions.length} results for "${searchQuery}"`
                       : `No results for "${searchQuery}"`}
                   </p>
                 )}
@@ -259,12 +269,8 @@ const DashboardPage = () => {
                 <tbody className="divide-y divide-white/5">
                   {recentTransactions.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="py-12 text-center">
-                        <div className="flex flex-col items-center space-y-3">
-                          <Search size={32} className="text-secondary opacity-40" />
-                          <p className="text-secondary font-medium">No transactions match <span className="text-white font-bold">"{searchQuery}"</span></p>
-                          <button onClick={() => setSearchQuery('')} className="text-xs text-accent font-bold hover:underline">Clear search</button>
-                        </div>
+                      <td colSpan={4} className="py-12 text-center text-secondary">
+                        No transactions found matching your search.
                       </td>
                     </tr>
                   ) : recentTransactions.map((tx) => (
@@ -311,7 +317,7 @@ const DashboardPage = () => {
         </div>
         
         {/* ML Engine Anomaly Toasts */}
-        {sessionEvents && sessionEvents.length > 0 && (
+        {sessionEvents && sessionEvents.length > 0 && !showAnomalyModal && (
           <ToastNotification 
              show={true}
              type="danger"
@@ -319,6 +325,35 @@ const DashboardPage = () => {
              onClose={() => {}}
           />
         )}
+
+        {/* Anomaly Freeze Modal */}
+        <AnimatePresence>
+          {showAnomalyModal && (
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+            >
+              <motion.div 
+                initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }}
+                className="bg-[#1C1D2A] border border-trust-danger/50 p-8 rounded-2xl max-w-md w-full text-center relative overflow-hidden"
+              >
+                <div className="absolute top-0 left-0 w-full h-1 bg-trust-danger animate-pulse"></div>
+                <Shield className="w-16 h-16 text-trust-danger mx-auto mb-4" />
+                <h3 className="text-2xl font-sora font-bold text-white mb-2">Security Freeze Initiated</h3>
+                <p className="text-[#8B8DB8] mb-6 leading-relaxed">
+                  Your recent typing speed and mouse behavior deviates drastically from your normal sessions. 
+                  Redirecting to identity verification...
+                </p>
+                <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden">
+                   <motion.div 
+                    initial={{ width: "0%" }} animate={{ width: "100%" }} transition={{ duration: 3, ease: "linear" }}
+                    className="h-full bg-trust-danger"
+                   ></motion.div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
     </div>
   );

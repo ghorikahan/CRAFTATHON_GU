@@ -20,6 +20,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Literal
 
+# Import our MongoDB integration
+from api.database import save_behavior_log, get_user_analytics
+
 # ── App setup ────────────────────────────────────────────────────────────────
 
 app = FastAPI(
@@ -190,6 +193,16 @@ def health_check():
     }
 
 
+@app.get("/api/user/{user_id}/analytics")
+def fetch_analytics(user_id: str):
+    """Fetches historical Recharts data from MongoDB"""
+    try:
+        data = get_user_analytics(user_id)
+        return {"status": "success", "data": data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/score", response_model=ScoreResponse)
 def score_behavior(data: BehaviorInput):
     """
@@ -214,8 +227,32 @@ def score_behavior(data: BehaviorInput):
 
     raw_score  = float(pipeline.score_samples(features_df[FEATURES])[0])
     risk_score = raw_to_risk_score(raw_score)
+
+    # 🔥 HYBRID CYBERSECURITY MODEL (Heuristic Speed Tripwires)
+    # The pure ML model can sometimes be too forgiving of short bursts. 
+    # These hard-rules guarantee instant RED alerts for hacking/mashing behavior!
+    if data.typing_speed > 8.0:
+        risk_score = max(risk_score, 98)  # More than 8 chars a second = Mashing keyboard
+    if data.mouse_velocity > 1000:
+        risk_score = max(risk_score, 90)  # Wild robotic mouse swinging
+    if data.key_hold_avg_ms < 50 and data.typing_speed > 3.0:
+        risk_score = max(risk_score, 88)  # Unhumanly short keystrokes (Bot script)
+
     risk_level, action = risk_score_to_level(risk_score)
     anomalies  = get_anomaly_reasons(data, risk_score)
+    is_anomaly = risk_level == "HIGH"
+
+    # 🔥 Our Custom Mongo Integration: permanently save session to cloud!
+    try:
+        save_behavior_log(
+            user_id=data.user_id,
+            avg_typing=data.typing_speed,
+            avg_mouse=data.mouse_velocity,
+            risk_score=risk_score,
+            is_anomaly=is_anomaly
+        )
+    except Exception as e:
+        print(f"MongoDB save failed: {e}")
 
     return ScoreResponse(
         user_id=data.user_id,
