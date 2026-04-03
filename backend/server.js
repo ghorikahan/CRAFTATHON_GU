@@ -23,11 +23,12 @@ app.use(cors({
 const connectDB = async () => {
   const options = {
     connectTimeoutMS: 10000,
+    dbName: 'behaveguard' // Explicitly points the Auth API exactly to the teammate's 'behaveguard' database!
   };
 
   try {
-    // Force explicitly connecting to ContinuousAuthDB so your tables spawn exactly there!
-    await mongoose.connect(process.env.MONGO_URI + 'ContinuousAuthDB', options);
+    // We cleanly connect using the defined options
+    await mongoose.connect(process.env.MONGO_URI, options);
     console.log(`[DATABASE] Success: Connected to BehaveGuard Atlas Cluster`);
   } catch (error) {
     console.warn(`[DATABASE] Cloud Error: ${error.message}`);
