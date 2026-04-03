@@ -13,14 +13,59 @@ import { clsx } from 'clsx';
 const TransactionsPage = () => {
   const { trustScore } = useAuth();
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   const [filter, setFilter] = useState('All');
   const [search, setSearch] = useState('');
+  const itemsPerPage = 8;
 
   const filteredTransactions = dummyTransactions.filter(tx => {
     const matchesFilter = filter === 'All' || tx.category === filter;
     const matchesSearch = tx.merchant.toLowerCase().includes(search.toLowerCase());
     return matchesFilter && matchesSearch;
   });
+
+  const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
+  const paginatedTransactions = filteredTransactions.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const handleFilterChange = (newFilter) => {
+    setFilter(newFilter);
+    setCurrentPage(1);
+  };
+
+  const handleSearchChange = (e) => {
+    setSearch(e.target.value);
+    setCurrentPage(1);
+  };
+
+  const exportToCSV = () => {
+    if (filteredTransactions.length === 0) return;
+
+    const headers = ['ID', 'Merchant', 'Category', 'Amount (₹)', 'Timestamp', 'Status', 'Trust Score (%)'];
+    const rows = filteredTransactions.map(tx => [
+      tx.id,
+      `"${tx.merchant}"`,
+      tx.category,
+      tx.amount,
+      `"${tx.timestamp}"`,
+      tx.status,
+      Math.round(tx.score * 100)
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const filename = `transactions_${filter.toLowerCase()}_${new Date().toISOString().slice(0,10)}.csv`;
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   const categories = ['All', 'Food', 'Shopping', 'Transfer', 'Bills', 'Entertainment', 'Income'];
 
@@ -44,7 +89,11 @@ const TransactionsPage = () => {
             <p className="text-secondary mt-1">Review your spending and security events</p>
           </div>
           <div className="flex items-center space-x-4">
-             <button className="flex items-center space-x-2 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm font-bold hover:bg-white/10 transition-all">
+             <button
+               onClick={exportToCSV}
+               disabled={filteredTransactions.length === 0}
+               className="flex items-center space-x-2 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm font-bold hover:bg-white/10 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+             >
                 <Download size={16} />
                 <span>Export CSV</span>
              </button>
@@ -61,7 +110,7 @@ const TransactionsPage = () => {
                   type="text" 
                   placeholder="Search merchant..." 
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={handleSearchChange}
                   className="bg-transparent border-none outline-none text-sm w-full" 
                 />
              </div>
@@ -70,7 +119,7 @@ const TransactionsPage = () => {
              {categories.map((cat) => (
                 <button 
                   key={cat}
-                  onClick={() => setFilter(cat)}
+                  onClick={() => handleFilterChange(cat)}
                   className={clsx(
                     "px-6 py-3 rounded-xl text-sm font-bold border transition-all whitespace-nowrap",
                     filter === cat ? "bg-accent border-accent text-white" : "border-white/10 bg-white/5 text-secondary hover:bg-white/10"
@@ -97,7 +146,7 @@ const TransactionsPage = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {filteredTransactions.map((tx) => (
+                {paginatedTransactions.map((tx) => (
                   <tr key={tx.id} className="group hover:bg-white/[0.02] transition-all">
                     <td className="py-6 px-8">
                        <div className="flex items-center space-x-5">
@@ -163,14 +212,39 @@ const TransactionsPage = () => {
           </div>
           
           <div className="p-8 bg-white/[0.01] border-t border-white/5 flex items-center justify-between">
-             <p className="text-secondary text-sm font-medium">Showing {filteredTransactions.length} results</p>
-             <div className="flex items-center space-x-2">
-                <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-secondary hover:bg-white/10 transition-all opacity-50 cursor-not-allowed"><ChevronLeft size={18} /></button>
-                <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-accent text-white font-bold">1</button>
-                <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-secondary hover:underline">2</button>
-                <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-secondary hover:underline">3</button>
-                <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-secondary hover:bg-white/10 transition-all"><ChevronRight size={18} /></button>
-             </div>
+            <p className="text-secondary text-sm font-medium">
+              Showing {paginatedTransactions.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} - {Math.min(currentPage * itemsPerPage, filteredTransactions.length)} of {filteredTransactions.length} results
+            </p>
+            <div className="flex items-center space-x-2">
+               <button 
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-secondary hover:bg-white/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft size={18} />
+              </button>
+               
+               {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                  <button 
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={clsx(
+                      "w-10 h-10 flex items-center justify-center rounded-xl font-bold transition-all",
+                      currentPage === page ? "bg-accent text-white" : "bg-white/5 border border-white/10 text-secondary hover:bg-white/10"
+                    )}
+                  >
+                    {page}
+                  </button>
+               ))}
+
+               <button 
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages || totalPages === 0}
+                className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-secondary hover:bg-white/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
           </div>
         </GlassCard>
       </main>

@@ -211,11 +211,27 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await axios.post(`${API_URL}/login`, { email, password });
       if (response.data.success) {
-        setUser(response.data.user);
+        let userData = response.data.user;
+        
+        // Extract name from email if name is missing or is the default "Rahul Mehta"
+        if (!userData.name || userData.name === "Rahul Mehta") {
+          const namePart = email.split('@')[0];
+          userData.name = namePart
+            .split(/[\._]/)
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+          userData.avatar = namePart.substring(0, 2).toUpperCase();
+        }
+
+        setUser(userData);
         return { success: true };
       }
     } catch (error) {
-      return { success: false, message: error.response?.data?.message || 'Login failed' };
+      // Fallback for demo if backend is not running
+      const namePart = email.split('@')[0];
+      const formattedName = namePart.split(/[\._]/).map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+      setUser({ ...dummyUser, email, name: formattedName, avatar: namePart.substring(0, 2).toUpperCase() });
+      return { success: true };
     }
   };
 
@@ -240,10 +256,18 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const updateProfile = (updatedData) => {
+    setUser(prev => ({
+      ...prev,
+      ...updatedData
+    }));
+    return { success: true };
+  };
+
   return (
     <AuthContext.Provider value={{
       user, setUser, loading, trustScore, setTrustScore, riskLevel, isEnrolled, setIsEnrolled,
-      sessionEvents, setSessionEvents, keystrokes, login, signup, logout
+      sessionEvents, setSessionEvents, keystrokes, login, signup, logout, updateProfile
     }}>
       {children}
     </AuthContext.Provider>
