@@ -32,6 +32,24 @@ const SignupPage = () => {
     const pinRefs = useRef([]);
     const otpRefs = useRef([]);
 
+    const checkPinStrength = () => {
+        const pinStr = formData.pin.join('');
+        if (pinStr.length !== 6) return false;
+        const consecutiveAsc = "0123456789";
+        const consecutiveDesc = "9876543210";
+        if (consecutiveAsc.includes(pinStr) || consecutiveDesc.includes(pinStr)) return false;
+        if (/^(.)\1+$/.test(pinStr)) return false;
+        return true;
+    };
+
+    const isPasswordValid = 
+        formData.password.length >= 8 &&
+        /[A-Z]/.test(formData.password) &&
+        /[!@#$%^&*(),.?":{}|<>]/.test(formData.password) &&
+        /[0-9]/.test(formData.password);
+
+    const isPinValid = formData.pin.every(p => p !== '') && checkPinStrength();
+
     const sendOtp = async () => {
         setIsSendingOtp(true);
         setError('');
@@ -48,6 +66,17 @@ const SignupPage = () => {
 
     const handleNext = async () => {
         setError('');
+        
+        if (step === 1 && (!formData.name || !formData.email || !formData.password)) {
+            return setError('All fields are required.');
+        }
+        if (step === 1 && !isPasswordValid) {
+            return setError('Password must be 8+ chars, have 1 uppercase, 1 number, & 1 special char.');
+        }
+        if (step === 2 && !isPinValid) {
+            return setError('PIN is too simple. Avoid consecutive or repeated digits.');
+        }
+
         if (step < 3) return setStep(step + 1);
         
         setIsSubmitting(true);

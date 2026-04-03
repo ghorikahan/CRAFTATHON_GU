@@ -14,7 +14,8 @@ import {
 import { AnimatePresence } from 'framer-motion';
 import DarkVeil from '../components/DarkVeil';
 import BlurText from '../components/BlurText';
-
+import AuthButton from '../components/AuthButton';
+import LiveTypingDemo from '../components/LiveTypingDemo';
 
 
 const Logo = ({ size = "md" }) => {
@@ -43,10 +44,6 @@ const Logo = ({ size = "md" }) => {
       <div className="flex flex-col">
         <div className="flex items-center gap-3">
           <span className={`font-sora font-bold ${isLarge ? 'text-2xl' : 'text-xl'} tracking-tighter leading-none text-white`}>BehaveGuard</span>
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald/10 border border-emerald/20 backdrop-blur-md">
-            <div className="w-2 h-2 rounded-full bg-emerald animate-pulse shadow-[0_0_10px_#00E5A0]" />
-            <span className={`font-mono ${isLarge ? 'text-[9px]' : 'text-[8px]'} font-bold uppercase tracking-widest text-emerald`}>Secured</span>
-          </div>
         </div>
         <span className={`font-mono ${isLarge ? 'text-[10px]' : 'text-[9px]'} uppercase tracking-[0.25em] text-white/70 leading-none mt-2`}>Continuous Intelligence</span>
 
@@ -310,22 +307,8 @@ const LandingPage = () => {
           </div>
 
           <div className="flex items-center gap-5">
-            <button
-              onClick={() => router.push('/login')}
-              className="px-7 py-3 rounded-xl bg-white/[0.04] border border-white/[0.1] text-sm font-dm font-bold text-white hover:bg-white/[0.08] hover:border-white/[0.2] transition-all"
-            >
-
-              Log In
-            </button>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => router.push('/signup')}
-              className="px-8 py-3 rounded-xl text-sm font-dm font-bold text-white shadow-xl transition-all"
-              style={{ background: 'linear-gradient(135deg, #FF4D6D, #8B5CF6)' }}
-            >
-              Get Started
-            </motion.button>
+            <AuthButton text="Log In" onClick={() => router.push('/login')} />
+            <AuthButton text="Sign Up" onClick={() => router.push('/signup')} colorHex="#430BB8" colorRgb="67, 11, 184" />
           </div>
         </div>
       </motion.nav>
@@ -406,34 +389,7 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* ─── CORE FEATURES ──────────────────────────────────── */}
-      <section id="features" className="relative py-28 px-6">
-        <div className="max-w-6xl mx-auto">
-          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/25 bg-white/[0.08] text-white text-xs font-dm font-medium mb-6">
-              <Sparkles size={14} />
-              Core Features
-            </div>
-
-            <h2 className="font-sora font-bold text-3xl md:text-4xl mb-4">
-              <span className="text-white">Invisible Security,</span>
-              <br />Maximum Protection
-            </h2>
-
-            <p className="text-white/80 font-dm text-base max-w-xl mx-auto leading-relaxed">
-              Advanced behavioral biometrics working silently to keep your banking secure
-            </p>
-
-          </motion.div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            <FeatureCard icon={Fingerprint} title="Behavioral Profiling" description="Captures typing rhythm, swipe velocity, tap pressure & navigation patterns" gradient="linear-gradient(135deg, #FF4D6D, #8B5CF6)" delay={0} />
-            <FeatureCard icon={Activity} title="Real-time Analysis" description="Continuous ML monitoring with instant anomaly detection" gradient="linear-gradient(135deg, #8B5CF6, #4F6EF7)" delay={0.1} />
-            <FeatureCard icon={Eye} title="Smart Detection" description="AI distinguishes genuine behavior from sophisticated fraud attempts" gradient="linear-gradient(135deg, #4F6EF7, #00D4E8)" delay={0.2} />
-            <FeatureCard icon={RefreshCw} title="Adaptive Response" description="Risk-based authentication with intelligent security escalation" gradient="linear-gradient(135deg, #00D4E8, #8B5CF6)" delay={0.3} />
-          </div>
-        </div>
-      </section>
+      <LiveTypingDemo />
 
       {/* ─── PRIVACY & SECURITY ─────────────────────────────── */}
       <section id="security" className="relative py-28 px-6">
