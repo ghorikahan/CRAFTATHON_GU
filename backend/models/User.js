@@ -15,6 +15,10 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  pin: {
+    type: String, // 6-digit security PIN
+    required: false,
+  },
   avatar: {
     type: String,
     default: '👤',
@@ -37,16 +41,27 @@ const userSchema = new mongoose.Schema({
   },
 });
 
-// Modern Password Hashing (Async-only, No 'next' required)
+// Modern Credential Hashing (Async-only)
 userSchema.pre('save', async function () {
-  if (!this.isModified('password')) return;
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
+  if (this.isModified('password')) {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+  }
+  if (this.isModified('pin')) {
+    const salt = await bcrypt.genSalt(10);
+    this.pin = await bcrypt.hash(this.pin, salt);
+  }
 });
 
 // Compare password
 userSchema.methods.comparePassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
+};
+
+// Compare PIN
+userSchema.methods.comparePin = async function (enteredPin) {
+  if (!this.pin) return false;
+  return await bcrypt.compare(enteredPin, this.pin);
 };
 
 const User = mongoose.model('User', userSchema, 'Users');

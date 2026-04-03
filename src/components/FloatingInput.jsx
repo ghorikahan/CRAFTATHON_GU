@@ -8,6 +8,7 @@ const FloatingInput = ({
     type = 'text',
     value,
     onChange,
+    onBlur,
     icon: Icon,
     required = false,
     autoComplete,
@@ -20,20 +21,18 @@ const FloatingInput = ({
     return (
         <div className={`relative group ${className}`}>
             {/* Input Background (Glass Effect) */}
-            <div className={`absolute inset-0 rounded-2xl transition-all duration-500 border ${
-                isFocused 
-                ? 'bg-white/[0.06] border-accent shadow-[0_0_20px_rgba(99,102,241,0.15)]' 
+            <div className={`absolute inset-0 rounded-2xl transition-all duration-500 border ${isFocused
+                ? 'bg-white/[0.06] border-accent shadow-[0_0_20px_rgba(99,102,241,0.15)]'
                 : 'bg-white/[0.03] border-white/[0.08] group-hover:border-white/20'
-            }`} />
+                }`} />
 
             {/* Icon Wrapper */}
             <div className="absolute left-5 top-1/2 -translate-y-1/2 z-20 flex items-center justify-center transition-colors duration-300">
                 {Icon && (
-                    <Icon 
-                        size={18} 
-                        className={`transition-colors duration-300 ${
-                            isFocused ? 'text-accent' : hasValue ? 'text-white/60' : 'text-white/20 group-hover:text-white/40'
-                        }`} 
+                    <Icon
+                        size={18}
+                        className={`transition-colors duration-300 ${isFocused ? 'text-accent' : hasValue ? 'text-white/60' : 'text-white/20 group-hover:text-white/40'
+                            }`}
                     />
                 )}
             </div>
@@ -41,11 +40,10 @@ const FloatingInput = ({
             {/* Floating Label */}
             <label
                 htmlFor={id}
-                className={`absolute left-[52px] z-20 pointer-events-none transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
-                    isFocused || hasValue
-                        ? 'top-4 text-[10px] font-black uppercase tracking-[0.2em] text-accent translate-y-[-4px]'
-                        : 'top-1/2 -translate-y-1/2 text-sm font-medium text-white/20 group-hover:text-white/40'
-                }`}
+                className={`absolute left-[52px] z-20 pointer-events-none transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${isFocused || hasValue
+                    ? 'top-4 text-[10px] font-black uppercase tracking-[0.2em] text-accent translate-y-[-4px]'
+                    : 'top-1/2 -translate-y-1/2 text-sm font-medium text-white/20 group-hover:text-white/40'
+                    }`}
             >
                 {label}
             </label>
@@ -57,7 +55,10 @@ const FloatingInput = ({
                 value={value}
                 onChange={onChange}
                 onFocus={() => setIsFocused(true)}
-                onBlur={() => setIsFocused(false)}
+                onBlur={(e) => {
+                    setIsFocused(false);
+                    if (onBlur) onBlur(e);
+                }}
                 required={required}
                 autoComplete={autoComplete}
                 disabled={disabled}

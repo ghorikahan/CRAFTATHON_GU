@@ -143,8 +143,17 @@ export const AuthProvider = ({ children }) => {
   // 2. ML ENGINE EVALUATION (Fast 1-second ticks for live demo!)
   useEffect(() => {
     let interval;
+    const sessionStartTime = Date.now();
+
     if (user) {
       interval = setInterval(async () => {
+        // Skip first 10s grace period
+        if (Date.now() - sessionStartTime < 10000) {
+          setTrustScore(1.0);
+          setRiskLevel('safe');
+          return;
+        }
+
         const b = metricsBuffer.current;
         const avg = (arr, defaultVal) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : defaultVal;
 
