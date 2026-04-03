@@ -221,10 +221,18 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+  const updateProfile = (updatedData) => {
+    setUser(prev => ({
+      ...prev,
+      ...updatedData
+    }));
+    return { success: true };
+  };
+
   return (
     <AuthContext.Provider value={{
       user, setUser, loading, trustScore, setTrustScore, riskLevel, isEnrolled, setIsEnrolled,
-      sessionEvents, setSessionEvents, keystrokes, login, signup, logout
+      sessionEvents, setSessionEvents, keystrokes, login, signup, logout, updateProfile
     }}>
       {children}
     </AuthContext.Provider>

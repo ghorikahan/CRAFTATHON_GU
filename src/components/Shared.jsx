@@ -3,11 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Check, Shield, AlertTriangle, X, ChevronRight, Menu, 
   LayoutDashboard, CreditCard, Send, User, Settings as SettingsIcon,
-  BarChart3, Activity, ShieldAlert, Users, LogOut, ArrowUpRight, ArrowDownRight, Search, ShieldCheck
+  BarChart3, Activity, ShieldAlert, Users, LogOut, Search, ShieldCheck
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { clsx } from 'clsx';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 export const GlassCard = ({ children, className }) => (
   <div className={clsx("glass p-6", className)}>
@@ -97,8 +97,15 @@ export const LoadingSpinner = () => (
 );
 
 export const NavBar = ({ isCollapsed, setCollapsed }) => {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/');
+  };
+
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: 'LayoutDashboard' },
     { name: 'Transactions', path: '/transactions', icon: 'CreditCard' },
@@ -150,9 +157,22 @@ export const NavBar = ({ isCollapsed, setCollapsed }) => {
           ))}
         </nav>
 
-        <div className="p-4 border-t border-white/5">
+        <div className="p-4 border-t border-white/5 space-y-2">
+          {!isCollapsed && user && (
+            <div className="glass p-3 rounded-xl flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-accent to-accent-violet flex items-center justify-center text-white font-bold">{user.avatar || 'U'}</div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold truncate">{user.name}</p>
+                <div className="flex items-center space-x-1">
+                  <div className="w-1.5 h-1.5 rounded-full bg-trust-safe"></div>
+                  <span className="text-[10px] text-secondary font-semibold uppercase tracking-wider">Protected</span>
+                </div>
+              </div>
+            </div>
+          )}
+          
           <button 
-            onClick={logout}
+            onClick={handleLogout}
             className={clsx(
               "flex items-center space-x-3 px-4 py-3 rounded-xl transition-all group w-full text-trust-danger hover:bg-trust-danger/10",
               isCollapsed ? "justify-center" : "justify-start"

@@ -1,18 +1,44 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   User, Shield, Lock, Eye, Bell, Globe, 
   Trash2, Download, Smartphone, LogOut, ChevronRight
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { GlassCard, NavBar, TrustBadge } from '../components/Shared';
+import { GlassCard, NavBar, TrustBadge, ToastNotification } from '../components/Shared';
 
 import { clsx } from 'clsx';
 
 const SettingsPage = () => {
-  const { user, trustScore } = useAuth();
+  const { user, trustScore, logout, updateProfile } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('profile');
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
+  
+  // Profile Form State
+  const [formData, setFormData] = useState({
+    name: user?.name || '',
+    email: user?.email || '',
+    phone: user?.phone || '88776 55432', // fallback
+    address: 'Mumbai, IN'
+  });
+  const [showToast, setShowToast] = useState(false);
+
+  const handleSave = () => {
+    updateProfile({
+      name: formData.name,
+      email: formData.email,
+      phone: formData.phone
+    });
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
 
   const tabs = [
     { id: 'profile', name: 'Profile Section', icon: User },
@@ -42,6 +68,13 @@ const SettingsPage = () => {
           <TrustBadge score={trustScore} />
         </header>
 
+        <ToastNotification 
+          show={showToast} 
+          message="Profile updated successfully" 
+          type="success"
+          onClose={() => setShowToast(false)}
+        />
+
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-12">
           {/* Side Tabs */}
           <div className="lg:col-span-1 space-y-2">
@@ -62,7 +95,10 @@ const SettingsPage = () => {
              ))}
              
              <div className="pt-10 mt-10 border-t border-white/5">
-                <button className="w-full flex items-center space-x-3 px-6 py-4 rounded-2xl font-bold text-trust-danger hover:bg-trust-danger/5 transition-all">
+                <button 
+                  onClick={handleLogout}
+                  className="w-full flex items-center space-x-3 px-6 py-4 rounded-2xl font-bold text-trust-danger hover:bg-trust-danger/5 transition-all"
+                >
                    <LogOut size={20} />
                    <span>Sign Out</span>
                 </button>
@@ -104,25 +140,50 @@ const SettingsPage = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                            <div className="space-y-2">
                              <label className="text-xs font-bold text-secondary uppercase tracking-widest px-1">Full Name</label>
-                             <input type="text" defaultValue={user?.name} className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 focus:ring-2 focus:ring-accent outline-none" />
+                             <input 
+                               type="text" 
+                               value={formData.name} 
+                               onChange={(e) => setFormData({...formData, name: e.target.value})}
+                               className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 focus:ring-2 focus:ring-accent outline-none" 
+                             />
                            </div>
                            <div className="space-y-2">
                              <label className="text-xs font-bold text-secondary uppercase tracking-widest px-1">Email Address</label>
-                             <input type="email" defaultValue={user?.email} className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 focus:ring-2 focus:ring-accent outline-none" />
+                             <input 
+                               type="email" 
+                               value={formData.email} 
+                               onChange={(e) => setFormData({...formData, email: e.target.value})}
+                               className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 focus:ring-2 focus:ring-accent outline-none" 
+                             />
                            </div>
                            <div className="space-y-2">
                              <label className="text-xs font-bold text-secondary uppercase tracking-widest px-1">Phone Number</label>
-                             <input type="text" defaultValue={user?.phone} className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 focus:ring-2 focus:ring-accent outline-none" />
+                             <input 
+                               type="text" 
+                               value={formData.phone} 
+                               onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                               className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 focus:ring-2 focus:ring-accent outline-none" 
+                             />
                            </div>
                            <div className="space-y-2">
                              <label className="text-xs font-bold text-secondary uppercase tracking-widest px-1">Residential Address</label>
-                             <input type="text" defaultValue="Mumbai, IN" className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 focus:ring-2 focus:ring-accent outline-none" />
+                             <input 
+                               type="text" 
+                               value={formData.address} 
+                               onChange={(e) => setFormData({...formData, address: e.target.value})}
+                               className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 focus:ring-2 focus:ring-accent outline-none" 
+                             />
                            </div>
                         </div>
                         
                         <div className="mt-12 flex justify-end">
                            <button className="bg-white/5 border border-white/10 px-8 py-4 rounded-xl font-bold hover:bg-white/10 transition-all mr-4 text-sm">Cancel</button>
-                           <button className="bg-accent px-10 py-4 rounded-xl font-bold hover:shadow-[0_0_20px_rgba(108,99,255,0.4)] transition-all text-sm">Save Profile Changes</button>
+                           <button 
+                             onClick={handleSave}
+                             className="bg-accent px-10 py-4 rounded-xl font-bold hover:shadow-[0_0_20px_rgba(108,99,255,0.4)] transition-all text-sm"
+                           >
+                             Save Profile Changes
+                           </button>
                         </div>
                      </GlassCard>
                   </motion.div>

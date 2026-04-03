@@ -3,7 +3,7 @@ import { clsx } from 'clsx';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, CreditCard, Send, User, Settings as SettingsIcon, 
-  ArrowUpRight, ArrowDownRight, Shield, ShieldCheck, Activity, Search
+  ArrowUpRight, ArrowDownRight, Shield, ShieldCheck, Activity, Search, X
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { dummyTransactions } from '../data/dummy';
@@ -39,6 +39,17 @@ const DashboardPage = () => {
   const { user, trustScore, riskLevel, sessionEvents } = useAuth();
   const navigate = useNavigate();
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const recentTransactions = dummyTransactions.filter(tx => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      tx.merchant.toLowerCase().includes(q) ||
+      tx.category.toLowerCase().includes(q) ||
+      String(Math.abs(tx.amount)).includes(q)
+    );
+  }).slice(0, 5);
   const [chartData, setChartData] = useState({
     labels: Array.from({ length: 30 }, (_, i) => i),
     datasets: [
@@ -118,7 +129,7 @@ const DashboardPage = () => {
               animate={{ opacity: 1, y: 0 }}
               className="font-sora font-extrabold text-3xl md:text-4xl mb-2"
             >
-              Good morning, {user?.name?.split(' ')[0] || 'User'}
+              Good morning, {user?.name ? (user.name.includes('.') || user.name.includes('_') ? user.name.split(/[._]/)[0] : user.name.split(' ')[0]) : 'Guest'}
             </motion.h1>
             <div className="flex items-center space-x-2 text-secondary font-medium">
               <ShieldCheck size={16} className="text-trust-safe" />
@@ -128,8 +139,19 @@ const DashboardPage = () => {
           
           <div className="flex items-center space-x-4">
              <div className="hidden lg:flex items-center bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-secondary focus-within:border-accent transition-all">
-              <Search size={18} className="mr-3" />
-              <input type="text" placeholder="Search accounts..." className="bg-transparent border-none outline-none text-sm w-48" />
+              <Search size={18} className="mr-3 flex-shrink-0" />
+              <input
+                type="text"
+                placeholder="Search transactions..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="bg-transparent border-none outline-none text-sm w-48 text-white placeholder:text-secondary"
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery('')} className="ml-2 hover:text-white transition-colors flex-shrink-0">
+                  <X size={14} />
+                </button>
+              )}
              </div>
              <TrustBadge score={trustScore} />
           </div>
@@ -212,8 +234,17 @@ const DashboardPage = () => {
         <div className="grid grid-cols-1 gap-10">
           <GlassCard>
             <div className="flex items-center justify-between mb-8">
-              <h3 className="font-sora font-bold text-xl">Recent Transactions</h3>
-              <button className="text-sm font-bold text-accent hover:underline">View All History</button>
+              <div>
+                <h3 className="font-sora font-bold text-xl">Recent Transactions</h3>
+                {searchQuery && (
+                  <p className="text-xs text-secondary mt-1">
+                    {recentTransactions.length > 0
+                      ? `${recentTransactions.length} result${recentTransactions.length > 1 ? 's' : ''} for "${searchQuery}"`
+                      : `No results for "${searchQuery}"`}
+                  </p>
+                )}
+              </div>
+              <button onClick={() => navigate('/transactions')} className="text-sm font-bold text-accent hover:underline">View All History</button>
             </div>
             <div className="space-y-4 overflow-x-auto">
               <table className="w-full text-left min-w-[600px]">
@@ -226,7 +257,17 @@ const DashboardPage = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {dummyTransactions.slice(0, 5).map((tx) => (
+                  {recentTransactions.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="py-12 text-center">
+                        <div className="flex flex-col items-center space-y-3">
+                          <Search size={32} className="text-secondary opacity-40" />
+                          <p className="text-secondary font-medium">No transactions match <span className="text-white font-bold">"{searchQuery}"</span></p>
+                          <button onClick={() => setSearchQuery('')} className="text-xs text-accent font-bold hover:underline">Clear search</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : recentTransactions.map((tx) => (
                     <tr key={tx.id} className="group hover:bg-white/[0.02] transition-all cursor-pointer">
                       <td className="py-4 px-2">
                         <div className="flex items-center space-x-4">
