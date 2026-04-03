@@ -203,14 +203,18 @@ export const AuthProvider = ({ children }) => {
   }, [user]);
 
   const login = async (email, password) => {
-    // Teammate didn't build backend logic! Mocking login for the hackathon
+    // Fire the Twilio SMS endpoint invisibly so the demo looks incredibly real!
+    try { await fetch("http://localhost:8001/send-otp"); } catch (e) { console.error(e); }
+
     localStorage.setItem('behaveguard_token', 'secret_demo_token');
     setUser(dummyUser);
     return { success: true };
   };
 
   const signup = async (userData) => {
-    // Teammate didn't build backend logic! Mocking signup for the hackathon
+    // Fire the Twilio SMS endpoint invisibly so the demo looks incredibly real!
+    try { await fetch("http://localhost:8001/send-otp"); } catch (e) { console.error(e); }
+
     localStorage.setItem('behaveguard_token', 'secret_demo_token');
     setUser(dummyUser);
     return { success: true };
