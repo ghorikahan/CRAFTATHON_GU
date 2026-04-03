@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { clsx } from 'clsx';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -8,7 +9,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { GlassCard } from '../components/Shared';
 
-import { clsx } from 'clsx';
+
 
 const ReauthPage = () => {
   const location = useLocation();

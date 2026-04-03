@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { clsx } from 'clsx';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ShieldAlert, ShieldCheck, ShieldX, Clock, 
@@ -9,9 +10,7 @@ import { Link } from 'react-router-dom';
 import { useAdmin } from '../context/AdminContext';
 import { GlassCard, AdminNav } from '../components/Shared';
 
-function clsx(...args) {
-  return args.filter(Boolean).join(' ');
-}
+
 
 const AlertsLogPage = () => {
   const { alerts } = useAdmin();

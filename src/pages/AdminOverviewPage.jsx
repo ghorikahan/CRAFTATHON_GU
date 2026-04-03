@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { clsx } from 'clsx';
 import { motion } from 'framer-motion';
 import { 
   BarChart3, Activity, ShieldAlert, Users, 
@@ -34,9 +35,7 @@ ChartJS.register(
   Filler
 );
 
-function clsx(...args) {
-  return args.filter(Boolean).join(' ');
-}
+
 
 const AdminOverviewPage = () => {
   const { stats, alerts } = useAdmin();

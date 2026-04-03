@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { clsx } from 'clsx';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, CreditCard, Send, User, Settings as SettingsIcon, 
@@ -263,4 +264,4 @@ const DashboardPage = () => {
 
 export default DashboardPage;
 
-import { clsx } from 'clsx';
+
