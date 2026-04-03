@@ -4,6 +4,10 @@ import mongoose from 'mongoose';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import authRoutes from './routes/auth.js';
+import dns from 'dns';
+
+// Force DNS to Google (Bypasses local Windows blocks for Atlas)
+dns.setServers(['8.8.8.8', '8.8.4.4']);
 
 const app = express();
 
@@ -14,48 +18,43 @@ app.use(cors({
   credentials: true,
 }));
 
-// Connect to MongoDB Atlas (Now with DNS-Resilience)
+// Cloud-Survivor Connection
 const connectDB = async () => {
-  const options = {
-    connectTimeoutMS: 10000,
-  };
+  const mongoURI = process.env.MONGO_URI;
 
   try {
-    // We try to connect to your Atlas string
-    // Tip: If you still get DNS errors, try connecting to your phone hotspot!
-    await mongoose.connect(process.env.MONGO_URI, options);
-    console.log(`[DATABASE] Success: Connected to BehaveGuard Atlas Cluster`);
+    console.log(`[DATABASE] Forcing Master DNS...`);
+    await mongoose.connect(mongoURI, {
+      family: 4, 
+      serverSelectionTimeoutMS: 8000,
+      connectTimeoutMS: 15000,
+    });
+    console.log(`[DATABASE] SUCCESS: Connected to BehaveGuard Cloud 🛡️`);
   } catch (error) {
-    console.warn(`[DATABASE] Cloud Error: ${error.message}`);
-    console.log(`[DATABASE] Falling back to Localhost so your demo doesn't stop...`);
+    console.warn(`[DATABASE] Master DNS Failed: ${error.message}`);
+    console.log(`[DATABASE] Switching to Local Emergency Storage...`);
     try {
-      await mongoose.connect('mongodb://127.0.0.1:27017/behaveguard', options);
-      console.log(`[DATABASE] Success: Connected to Local Host`);
+      await mongoose.connect('mongodb://127.0.0.1:27017/behaveguard');
+      console.log(`[DATABASE] Readiness: Local Backup Active`);
     } catch (localError) {
-      console.error(`[DATABASE] Critical: No database available.`);
+      console.error(`[DATABASE] Critical Failure: No database detected.`);
     }
   }
 };
 
 app.use('/api/auth', authRoutes);
 
-app.get('/', (req, res) => {
-  res.send('BehaveGuard API is running...');
-});
+app.get('/', (req, res) => res.send('Secure API Active'));
 
-// Final Safety Shield
+// Global Shield
 app.use((err, req, res, next) => {
-  console.error('[SERVER CRASH PREVENTED]', err.stack);
-  res.status(500).json({ 
-    success: false, 
-    message: err.message || 'Internal Security Error' 
-  });
+  console.error('[CRASH PREVENTED]', err.stack);
+  res.status(500).json({ success: false, message: 'Internal Engine Exception' });
 });
 
-const PORT = process.env.PORT || 5000;
-
+const PORT = 5000;
 app.listen(PORT, () => {
   connectDB();
-  console.log(`[SERVER] Ready: Port ${PORT}`);
-  console.log(`[EMAIL] Active: ${process.env.EMAIL_USER}`);
+  console.log(`[SERVER] Success: API Port ${PORT}`);
+  console.log(`[EMAIL] System: Ready for ${process.env.EMAIL_USER}`);
 });
