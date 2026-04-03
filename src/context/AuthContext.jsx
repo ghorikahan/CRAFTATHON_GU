@@ -30,19 +30,11 @@ export const AuthProvider = ({ children }) => {
 
   // Restore user session on reload
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const response = await axios.get(`${API_URL}/me`);
-        if (response.data.success) {
-          setUser(response.data.user);
-        }
-      } catch (error) {
-        // Silently fail if not logged in
-      } finally {
-        setLoading(false);
-      }
-    };
-    checkAuth();
+    const token = localStorage.getItem('behaveguard_token');
+    if (token) {
+      setUser(dummyUser);
+    }
+    setLoading(false);
   }, []);
 
   // Buffers for fast real-time aggregation
@@ -211,36 +203,22 @@ export const AuthProvider = ({ children }) => {
   }, [user]);
 
   const login = async (email, password) => {
-    try {
-      const response = await axios.post(`${API_URL}/login`, { email, password });
-      if (response.data.success) {
-        setUser(response.data.user);
-        return { success: true };
-      }
-    } catch (error) {
-      return { success: false, message: error.response?.data?.message || 'Login failed' };
-    }
+    // Teammate didn't build backend logic! Mocking login for the hackathon
+    localStorage.setItem('behaveguard_token', 'secret_demo_token');
+    setUser(dummyUser);
+    return { success: true };
   };
 
   const signup = async (userData) => {
-    try {
-      const response = await axios.post(`${API_URL}/signup`, userData);
-      if (response.data.success) {
-        setUser(response.data.user);
-        return { success: true };
-      }
-    } catch (error) {
-      return { success: false, message: error.response?.data?.message || 'Signup failed' };
-    }
+    // Teammate didn't build backend logic! Mocking signup for the hackathon
+    localStorage.setItem('behaveguard_token', 'secret_demo_token');
+    setUser(dummyUser);
+    return { success: true };
   };
 
   const logout = async () => {
-    try {
-      await axios.post(`${API_URL}/logout`);
-      setUser(null);
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
+    localStorage.removeItem('behaveguard_token');
+    setUser(null);
   };
 
   return (
