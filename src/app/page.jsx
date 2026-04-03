@@ -15,6 +15,7 @@ import { AnimatePresence } from 'framer-motion';
 import DarkVeil from '../components/DarkVeil';
 import BlurText from '../components/BlurText';
 import AuthButton from '../components/AuthButton';
+import ProtectionBtn from '../components/ProtectionBtn';
 import LiveTypingDemo from '../components/LiveTypingDemo';
 
 
@@ -374,16 +375,7 @@ const LandingPage = () => {
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-              <motion.button
-                whileHover={{ scale: 1.05, boxShadow: '0 0 30px rgba(255,77,109,0.45)' }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => router.push('/signup')}
-                className="px-12 py-5 rounded-2xl text-white font-dm font-bold text-xl flex items-center gap-4 shadow-2xl transition-all"
-                style={{ background: 'linear-gradient(135deg, #FF4D6D, #8B5CF6)' }}
-              >
-                Start My Protection
-                <Rocket size={24} className="stroke-[2.5px]" />
-              </motion.button>
+              <ProtectionBtn onClick={() => router.push('/signup')} text="Start My Protection" />
             </div>
           </motion.div>
         </div>
