@@ -102,7 +102,7 @@ export const NavBar = ({ isCollapsed, setCollapsed }) => {
     { name: 'Dashboard', path: '/dashboard', icon: 'LayoutDashboard' },
     { name: 'Transactions', path: '/transactions', icon: 'CreditCard' },
     { name: 'Transfer', path: '/transfer', icon: 'Send' },
-    { name: 'My Profile', path: '/profile', icon: 'User' },
+    { name: 'Your Fingerprint', path: '/profile', icon: 'User' },
     { name: 'Settings', path: '/settings', icon: 'SettingsIcon' },
   ];
 

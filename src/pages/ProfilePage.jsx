@@ -89,7 +89,7 @@ const ProfilePage = () => {
       )}>
         <header className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-6">
           <div>
-            <h1 className="font-sora font-extrabold text-3xl md:text-4xl leading-tight">Your Behavioural <br />Fingerprint</h1>
+            <h1 className="font-sora font-extrabold text-3xl md:text-4xl leading-tight">Your Fingerprint</h1>
             <p className="text-secondary mt-1">Real-time analysis of your unique identity markers</p>
           </div>
           <TrustBadge score={trustScore} />

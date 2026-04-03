@@ -15,7 +15,7 @@ const SettingsPage = () => {
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const tabs = [
-    { id: 'profile', name: 'Profile', icon: User },
+    { id: 'profile', name: 'Profile Section', icon: User },
     { id: 'security', name: 'Security', icon: Shield },
     { id: 'privacy', name: 'Privacy', icon: Eye }
   ];
