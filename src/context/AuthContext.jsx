@@ -6,16 +6,6 @@ axios.defaults.withCredentials = true;
 
 const AuthContext = createContext();
 
-const dummyUser = {
-  id: "user_001",
-  name: "Rahul Mehta",
-  email: "rahul.mehta@gmail.com",
-  avatar: "👤",
-  balance: 124500,
-  isEnrolled: true,
-  trustScore: 0.85
-};
-
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);

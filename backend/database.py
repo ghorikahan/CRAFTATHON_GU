@@ -10,7 +10,7 @@ MONGO_URI = os.getenv("MONGO_URI")
 # Establish cloud connection
 try:
     client = MongoClient(MONGO_URI)
-    db = client["ContinuousAuthDB"]
+    db = client["behaveguard"]
     logs_collection = db["behavior_logs"]
     print("✅ Successfully connected to MongoDB Atlas!")
 except Exception as e:
