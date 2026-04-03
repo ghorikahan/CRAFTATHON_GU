@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { clsx } from 'clsx';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  LayoutDashboard, CreditCard, Send, User, Settings as SettingsIcon, 
+import {
+  LayoutDashboard, CreditCard, Send, User, Settings as SettingsIcon,
   ArrowUpRight, ArrowDownRight, Shield, ShieldCheck, Activity, Search
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -39,6 +39,7 @@ const DashboardPage = () => {
   const { user, trustScore, riskLevel, sessionEvents } = useAuth();
   const navigate = useNavigate();
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [showAnomalyModal, setShowAnomalyModal] = useState(false);
   const [chartData, setChartData] = useState({
     labels: Array.from({ length: 30 }, (_, i) => i),
     datasets: [
@@ -58,8 +59,15 @@ const DashboardPage = () => {
   // Security Freeze active defense trigger!
   useEffect(() => {
     if (riskLevel === 'danger') {
+      setShowAnomalyModal(true);
       const reason = sessionEvents.length > 0 ? sessionEvents[0].message : 'Critical behavioural anomaly detected';
-      navigate('/reauth', { state: { returnPath: '/dashboard', reason: reason } });
+
+      // Wait 3 seconds to show the modal before teleporting them to verification
+      const timer = setTimeout(() => {
+        navigate('/reauth', { state: { returnPath: '/dashboard', reason: reason } });
+      }, 3000);
+
+      return () => clearTimeout(timer);
     }
   }, [riskLevel, sessionEvents, navigate]);
 
@@ -70,7 +78,7 @@ const DashboardPage = () => {
         const newData = [...prev.datasets[0].data.slice(1), trustScore];
         const color = trustScore > 0.6 ? '#10B981' : (trustScore > 0.35 ? '#F59E0B' : '#EF4444');
         const bgColor = trustScore > 0.6 ? 'rgba(16, 185, 129, 0.1)' : (trustScore > 0.35 ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.1)');
-        
+
         return {
           ...prev,
           datasets: [{
@@ -113,7 +121,7 @@ const DashboardPage = () => {
         {/* Header */}
         <header className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-6">
           <div>
-            <motion.h1 
+            <motion.h1
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               className="font-sora font-extrabold text-3xl md:text-4xl mb-2"
@@ -125,13 +133,13 @@ const DashboardPage = () => {
               <span>Behavioural engine active · Continuous protection enabled</span>
             </div>
           </div>
-          
+
           <div className="flex items-center space-x-4">
-             <div className="hidden lg:flex items-center bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-secondary focus-within:border-accent transition-all">
+            <div className="hidden lg:flex items-center bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-secondary focus-within:border-accent transition-all">
               <Search size={18} className="mr-3" />
               <input type="text" placeholder="Search accounts..." className="bg-transparent border-none outline-none text-sm w-48" />
-             </div>
-             <TrustBadge score={trustScore} />
+            </div>
+            <TrustBadge score={trustScore} />
           </div>
         </header>
 
@@ -154,7 +162,7 @@ const DashboardPage = () => {
           <GlassCard className="flex flex-col justify-between hover:bg-white/[0.05] transition-all cursor-pointer">
             <span className="text-xs font-bold text-secondary uppercase tracking-widest mb-4">Trust Score</span>
             <div className="flex items-end justify-between">
-              <motion.h2 
+              <motion.h2
                 key={trustScore}
                 initial={{ scale: 1.1, color: '#6C63FF' }}
                 animate={{ scale: 1, color: '#fff' }}
@@ -194,16 +202,16 @@ const DashboardPage = () => {
 
           <div className="flex flex-col space-y-6">
             <div className="relative h-[220px] mb-12">
-               <BankCard cardData={user} className="absolute top-0 left-0 z-20" />
-               <BankCard cardData={{ ...user, accountNo: '•••• •••• •••• 9210' }} variant="mastercard" className="absolute top-10 left-6 z-10 opacity-60 scale-95" />
+              <BankCard cardData={user} className="absolute top-0 left-0 z-20" />
+              <BankCard cardData={{ ...user, accountNo: '•••• •••• •••• 9210' }} variant="mastercard" className="absolute top-10 left-6 z-10 opacity-60 scale-95" />
             </div>
-            
+
             <GlassCard className="flex-1 border-accent/20 bg-accent/5">
-               <h4 className="font-sora font-bold mb-3">Security Insights</h4>
-               <p className="text-sm text-secondary mb-4 leading-relaxed">
-                 Your typing rhythm is consistent with your 30-day baseline. Verification will be waived for transfers under ₹1,00,000.
-               </p>
-               <button className="text-xs font-bold text-accent uppercase tracking-widest hover:underline">View Deep Profile</button>
+              <h4 className="font-sora font-bold mb-3">Security Insights</h4>
+              <p className="text-sm text-secondary mb-4 leading-relaxed">
+                Your typing rhythm is consistent with your 30-day baseline. Verification will be waived for transfers under ₹1,00,000.
+              </p>
+              <button className="text-xs font-bold text-accent uppercase tracking-widest hover:underline">View Deep Profile</button>
             </GlassCard>
           </div>
         </div>
@@ -256,10 +264,10 @@ const DashboardPage = () => {
                         <p className="text-[10px] text-secondary">Completed</p>
                       </td>
                       <td className="py-4 text-right px-2">
-                         <div className="flex items-center justify-end space-x-1.5">
-                            <div className={clsx("w-1.5 h-1.5 rounded-full", tx.score > 0.9 ? "bg-trust-safe" : "bg-trust-watch")}></div>
-                            <span className="text-xs font-bold text-secondary">{Math.round(tx.score * 100)}%</span>
-                         </div>
+                        <div className="flex items-center justify-end space-x-1.5">
+                          <div className={clsx("w-1.5 h-1.5 rounded-full", tx.score > 0.9 ? "bg-trust-safe" : "bg-trust-watch")}></div>
+                          <span className="text-xs font-bold text-secondary">{Math.round(tx.score * 100)}%</span>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -268,16 +276,45 @@ const DashboardPage = () => {
             </div>
           </GlassCard>
         </div>
-        
+
         {/* ML Engine Anomaly Toasts */}
-        {sessionEvents && sessionEvents.length > 0 && (
-          <ToastNotification 
-             show={true}
-             type="danger"
-             message={sessionEvents[0].message}
-             onClose={() => {}}
+        {sessionEvents && sessionEvents.length > 0 && !showAnomalyModal && (
+          <ToastNotification
+            show={true}
+            type="danger"
+            message={sessionEvents[0].message}
+            onClose={() => { }}
           />
         )}
+
+        {/* Anomaly Freeze Modal */}
+        <AnimatePresence>
+          {showAnomalyModal && (
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+            >
+              <motion.div
+                initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }}
+                className="bg-[#1C1D2A] border border-trust-danger/50 p-8 rounded-2xl max-w-md w-full text-center relative overflow-hidden"
+              >
+                <div className="absolute top-0 left-0 w-full h-1 bg-trust-danger animate-pulse"></div>
+                <Shield className="w-16 h-16 text-trust-danger mx-auto mb-4" />
+                <h3 className="text-2xl font-sora font-bold text-white mb-2">Security Freeze Initiated</h3>
+                <p className="text-[#8B8DB8] mb-6 leading-relaxed">
+                  Your recent typing speed and mouse behavior deviates drastically from your normal sessions.
+                  Redirecting to identity verification...
+                </p>
+                <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden">
+                  <motion.div
+                    initial={{ width: "0%" }} animate={{ width: "100%" }} transition={{ duration: 3, ease: "linear" }}
+                    className="h-full bg-trust-danger"
+                  ></motion.div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
     </div>
   );
