@@ -28,7 +28,7 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000'], // Allows BOTH your Next.js frontend and teammate's Vite frontend natively
+  origin: true, // Dynamically allow whatever origin Vercel assigns you
   credentials: true,
 }));
 
