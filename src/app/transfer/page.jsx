@@ -9,7 +9,10 @@ import { GlobalSpotlight } from '../../components/MagicSpotlight';
 import { clsx } from 'clsx';
 
 const TransferPage = () => {
-  const { user, trustScore, riskLevel, liveMetrics, sessionEvents, resetTrustScore } = useAuth();
+  const {
+    user, trustScore, riskLevel, liveMetrics, sessionEvents,
+    resetTrustScore, setUser, lockAccount, strikeCount, addStrike, isWarmingUp
+  } = useAuth();
   const router = useRouter();
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
   const gridRef = useRef(null);
@@ -41,6 +44,14 @@ const TransferPage = () => {
   const [pinInput, setPinInput] = useState(['', '', '', '', '', '']);
   const [pinError, setPinError] = useState('');
   const [showSandboxHelp, setShowSandboxHelp] = useState(false);
+  const [showAnomalyModal, setShowAnomalyModal] = useState(false);
+  const [showBehaviorPinModal, setShowBehaviorPinModal] = useState(false);
+  const [behaviorPinInput, setBehaviorPinInput] = useState(['', '', '', '', '', '']);
+  const [behaviorPinError, setBehaviorPinError] = useState('');
+
+  const pinLockActive = useRef(false);
+  const entryTimeRef = useRef(Date.now());
+  const lastVerifiedTime = useRef(0);
 
   // Fetch balance + history
   useEffect(() => {
@@ -56,6 +67,67 @@ const TransferPage = () => {
     };
     if (user) fetchData();
   }, [user]);
+
+  // ── Security Monitor — DANGER ─────────────────────────────────────────────
+  useEffect(() => {
+    if (user?.isLocked && !pinLockActive.current) {
+      pinLockActive.current = true;
+      setShowBehaviorPinModal(true);
+    }
+  }, [user?.isLocked]);
+
+  useEffect(() => {
+    if (isWarmingUp) return;
+    const isGracePeriod = (Date.now() - entryTimeRef.current) < 10000;
+    const inCooldown = (Date.now() - lastVerifiedTime.current) < 30000;
+
+    if (riskLevel === 'danger' && !isGracePeriod && !inCooldown && !pinLockActive.current) {
+      pinLockActive.current = true;
+      addStrike();
+      lockAccount();
+      setShowAnomalyModal(true);
+      setTimeout(() => {
+        setShowAnomalyModal(false);
+        setShowBehaviorPinModal(true);
+      }, 3000);
+    }
+  }, [riskLevel, isWarmingUp, addStrike, lockAccount]);
+
+  // Handle auto-logout redirect
+  useEffect(() => {
+    if (!user && !isWarmingUp) {
+      router.push('/');
+    }
+  }, [user, isWarmingUp, router]);
+
+  const handleBehavioralPinSubmit = async () => {
+    setBehaviorPinError('');
+    const pin = behaviorPinInput.join('');
+    if (pin.length !== 6) { setBehaviorPinError('Enter all 6 digits.'); return; }
+    try {
+      const res = await fetch('http://localhost:5000/api/auth/verify-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ pin }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        setBehaviorPinError(data.message || 'Wrong PIN — redirecting…');
+        setTimeout(() => { window.location.href = 'http://localhost:3000'; }, 1500);
+      } else {
+        setShowBehaviorPinModal(false);
+        setBehaviorPinInput(['', '', '', '', '', '']);
+        setBehaviorPinError('');
+        pinLockActive.current = false;
+        lastVerifiedTime.current = Date.now();
+        resetTrustScore();
+        setUser(prev => ({ ...prev, isLocked: false }));
+      }
+    } catch {
+      setBehaviorPinError('Security node unreachable.');
+    }
+  };
 
   // ── DEPOSIT ───────────────────────────────────────────────────────────────
   const handleDeposit = async (e) => {
@@ -625,6 +697,7 @@ const TransferPage = () => {
       {/* ── Sandbox Help Modal ──────────────────────────────────────────────── */}
       <AnimatePresence>
         {showSandboxHelp && (
+          /* ... (existing help modal content) ... */
           <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
@@ -663,6 +736,82 @@ const TransferPage = () => {
                 className="w-full py-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-black uppercase tracking-widest transition-all"
               >
                 Dismiss Helper
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Behavioral Anomaly & PIN Lock ───────────────────────────────────── */}
+      <AnimatePresence>
+        {showAnomalyModal && (
+          <motion.div
+            key="behavioral-anomaly"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-black/80 backdrop-blur-xl"
+          >
+            <motion.div
+              initial={{ scale: 0.8, y: 20 }} animate={{ scale: 1, y: 0 }}
+              className="w-full max-w-lg rounded-[36px] border-2 border-red-500/50 bg-[#100C1C] p-12 text-center shadow-[0_0_120px_rgba(239,68,68,0.35)]"
+            >
+              <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 0.7 }} className="w-20 h-20 rounded-full bg-red-500/20 border-2 border-red-500/40 flex items-center justify-center mx-auto mb-8 text-red-500">
+                <ShieldAlert size={40} />
+              </motion.div>
+              <h2 className="font-sora font-extrabold text-3xl mb-4">Anomaly Detected</h2>
+              <p className="text-white/50 text-sm mb-8 leading-relaxed max-w-xs mx-auto">
+                Sudden behavioural shift detected. Interactive rhythm deviates from baseline profile.
+              </p>
+              {strikeCount > 0 && (
+                <div className={clsx("mb-8 p-4 rounded-xl border", strikeCount === 2 ? "bg-orange-500/10 border-orange-500/30" : "bg-white/5 border-white/10")}>
+                  <p className={clsx("text-[10px] font-black uppercase tracking-widest", strikeCount === 2 ? "text-orange-400" : "text-white/40")}>
+                    {strikeCount === 2 ? '⚠️ Final Warning' : 'Security Alert'}
+                  </p>
+                  <p className="text-white font-bold text-sm mt-1">Incident {strikeCount} of 3</p>
+                </div>
+              )}
+              <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
+                <motion.div initial={{ width: '100%' }} animate={{ width: '0%' }} transition={{ duration: 3 }} className="h-full bg-red-500" />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showBehaviorPinModal && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-black/85 backdrop-blur-xl">
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-sm bg-[#0E0C1E] border border-white/10 rounded-[32px] p-10 text-center shadow-2xl">
+              <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-6 text-red-400">
+                <Lock size={30} />
+              </div>
+              <h3 className="font-sora font-bold text-2xl mb-2">Re-Verify Identity</h3>
+              <p className={clsx("text-[10px] font-bold uppercase tracking-widest mb-8", strikeCount === 2 ? "text-orange-400" : "text-white/30")}>
+                {strikeCount === 2 ? 'STRIKE 2/3 - FINAL WARNING' : `Correct PIN required • Strike ${strikeCount}/3`}
+              </p>
+              <div className="flex justify-center gap-2 mb-6">
+                {behaviorPinInput.map((val, idx) => (
+                  <input
+                    key={idx} id={`bpin-${idx}`}
+                    value={val} inputMode="numeric" maxLength={1}
+                    onChange={e => {
+                      const v = e.target.value.replace(/\D/g, '').slice(0, 1);
+                      const next = [...behaviorPinInput]; next[idx] = v; setBehaviorPinInput(next);
+                      if (v && idx < 5) document.getElementById(`bpin-${idx + 1}`)?.focus();
+                    }}
+                    onKeyDown={e => {
+                      if (e.key === 'Backspace' && !behaviorPinInput[idx] && idx > 0)
+                        document.getElementById(`bpin-${idx - 1}`)?.focus();
+                    }}
+                    className="w-11 h-13 bg-white/5 border border-white/10 rounded-xl text-center text-xl font-bold focus:border-accent outline-none"
+                  />
+                ))}
+              </div>
+              {behaviorPinError && <p className="text-red-400 text-xs font-semibold mb-4">{behaviorPinError}</p>}
+              <button
+                onClick={handleBehavioralPinSubmit}
+                className="w-full py-4 rounded-2xl bg-accent text-white font-black text-xs uppercase tracking-widest hover:shadow-[0_0_30px_rgba(99,102,241,0.4)] transition-all"
+              >
+                Unlock Session
               </button>
             </motion.div>
           </div>

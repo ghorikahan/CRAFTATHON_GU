@@ -15,6 +15,7 @@ export const AuthProvider = ({ children }) => {
   const [trustScore, setTrustScore] = useState(1);
   const [riskLevel, setRiskLevel] = useState('safe');
   const [isWarmingUp, setIsWarmingUp] = useState(true);
+  const [strikeCount, setStrikeCount] = useState(0);
 
   const [liveMetrics, setLiveMetrics] = useState({
     typingSpeed: 0,
@@ -79,7 +80,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
-    try { await axios.post(`${API_URL}/logout`); setUser(null); } catch (e) { console.error(e); }
+    try { await axios.post(`${API_URL}/logout`); setUser(null); setStrikeCount(0); } catch (e) { console.error(e); }
   };
 
   const updateProfile = async (data) => {
@@ -303,12 +304,28 @@ export const AuthProvider = ({ children }) => {
     setRiskLevel('safe');
   };
 
+  const addStrike = () => {
+    setStrikeCount(prev => prev + 1);
+  };
+
+  // Auto-logout on 3 strikes
+  useEffect(() => {
+    if (strikeCount >= 3) {
+      logout();
+    }
+  }, [strikeCount]);
+
   return (
     <AuthContext.Provider value={{
       user,
+      setUser,
       loading,
       trustScore,
+      setTrustScore,
       riskLevel,
+      setRiskLevel,
+      strikeCount,
+      addStrike,
       isWarmingUp,
       liveMetrics,
       sessionEvents,

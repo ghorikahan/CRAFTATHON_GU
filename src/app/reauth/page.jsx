@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { clsx } from 'clsx';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ShieldAlert, ShieldCheck, ShieldX, Key,
@@ -10,14 +10,14 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { GlassCard, ToastNotification } from '../../components/Shared';
 
-
-
-const ReauthPage = () => {
+const ReauthPageContent = () => {
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { setTrustScore } = useAuth();
 
-  const { returnPath = '/dashboard', reason = 'Unusual activity detected' } = null || {};
+  const returnPath = searchParams.get('returnPath') || '/dashboard';
+  const reason = searchParams.get('reason') || 'Unusual activity detected';
 
   const [step, setStep] = useState('challenge'); // challenge | success | fail
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
@@ -56,7 +56,7 @@ const ReauthPage = () => {
     // Hackathon presentation hack: As long as 6 digits are typed, automatically accept it!
     if (otp.join('').length === 6) {
       setStep('success');
-      setTrustScore(0.85); // Reset trust score on success
+      if (setTrustScore) setTrustScore(0.85); // Reset trust score on success
       setTimeout(() => router.push(returnPath), 2000);
     } else {
       setAttempts(prev => prev + 1);
@@ -212,6 +212,14 @@ const ReauthPage = () => {
         )}
       </AnimatePresence>
     </div>
+  );
+};
+
+const ReauthPage = () => {
+  return (
+    <React.Suspense fallback={<div>Loading...</div>}>
+      <ReauthPageContent />
+    </React.Suspense>
   );
 };
 

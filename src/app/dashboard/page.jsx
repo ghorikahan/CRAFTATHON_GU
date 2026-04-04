@@ -72,7 +72,10 @@ const CalibrationDots = () => (
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 
 const DashboardPage = () => {
-  const { user, trustScore, riskLevel, sessionEvents, isWarmingUp, liveMetrics, resetTrustScore, lockAccount, setUser } = useAuth();
+  const {
+    user, trustScore, riskLevel, sessionEvents, isWarmingUp, liveMetrics,
+    resetTrustScore, lockAccount, setUser, strikeCount, addStrike
+  } = useAuth();
   const router = useRouter();
 
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -183,6 +186,7 @@ const DashboardPage = () => {
 
     if (riskLevel === 'danger' && !isGracePeriod && !inCooldown && !pinLockActive.current) {
       pinLockActive.current = true;
+      addStrike(); // Increment session strike count
       lockAccount(); // Persist the lock in DB
       setWarning(null);
       setShowAnomalyModal(true);
@@ -191,7 +195,14 @@ const DashboardPage = () => {
         setShowPinModal(true);
       }, 3000);
     }
-  }, [riskLevel, isWarmingUp]);
+  }, [riskLevel, isWarmingUp, addStrike]);
+
+  // Handle kick-out (redirect to landing) when session is deactivated
+  useEffect(() => {
+    if (!user && !isWarmingUp) {
+      router.push('/');
+    }
+  }, [user, isWarmingUp, router]);
 
   // ── Security — WATCH banner only <50% score, throttled 45 s ──────────────
   useEffect(() => {
@@ -343,6 +354,28 @@ const DashboardPage = () => {
                   Session paused for your protection.
                 </p>
 
+                {strikeCount > 0 && (
+                  <div className={clsx(
+                    "mb-6 p-4 rounded-xl border transition-all",
+                    strikeCount === 2 ? "bg-orange-500/10 border-orange-500/30" : "bg-white/5 border-white/10"
+                  )}>
+                    <p className={clsx(
+                      "text-xs font-black uppercase tracking-widest",
+                      strikeCount === 2 ? "text-orange-400" : "text-white/40"
+                    )}>
+                      {strikeCount === 2 ? '⚠️ Final Warning' : 'Precautionary Alert'}
+                    </p>
+                    <p className="text-white/80 font-bold text-sm mt-1">
+                      Incident {strikeCount} of 3
+                    </p>
+                    {strikeCount === 2 && (
+                      <p className="text-orange-200/60 text-[10px] mt-1 font-medium italic">
+                        One more anomaly will terminate your session immediately.
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 <div className="w-full h-[3px] bg-white/10 rounded-full overflow-hidden">
                   <motion.div
                     className="h-full bg-gradient-to-r from-red-500 to-red-400 rounded-full"
@@ -381,9 +414,18 @@ const DashboardPage = () => {
                 <p className="text-white/40 text-xs leading-relaxed mb-1">
                   Enter your <span className="text-white/80 font-semibold">6-digit security PIN</span> to resume.
                 </p>
-                <p className="text-red-400/70 text-[10px] font-bold uppercase tracking-widest mb-8">
-                  Wrong PIN ends your session
+                <p className={clsx(
+                  "text-[10px] font-bold uppercase tracking-widest mb-4",
+                  strikeCount === 2 ? "text-orange-400" : "text-red-400/70"
+                )}>
+                  {strikeCount === 2 ? 'FINAL WARNING: STRIKE 2/3' : `Security Check: Strike ${strikeCount}/3`}
                 </p>
+
+                {strikeCount === 2 && (
+                  <p className="text-orange-300/80 text-[9px] font-black uppercase tracking-[0.2em] mb-4 bg-orange-500/10 py-2 rounded-lg border border-orange-500/20">
+                    Next Anomaly = Auto-Logout
+                  </p>
+                )}
 
                 <div className="flex justify-center gap-2 mb-5">
                   {pinInput.map((val, idx) => (

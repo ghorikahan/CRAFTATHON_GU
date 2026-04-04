@@ -2,6 +2,7 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import nodemailer from 'nodemailer';
+import { sendOtpEmail } from '../utils/mail.js';
 
 const router = express.Router();
 
@@ -34,8 +35,8 @@ router.post('/check-email', async (req, res) => {
   }
 });
 
-// Send OTP
-router.post('/send-otp', (req, res) => {
+// Send OTP (returns OTP in non-production for local testing)
+router.post('/send-otp', async (req, res) => {
   try {
     const { email, name } = req.body;
     const otp = Math.floor(100000 + Math.random() * 900000); // 6 digit OTP
@@ -61,27 +62,47 @@ router.post('/send-otp', (req, res) => {
       `,
     };
 
-    // Create Transporter dynamically to ensure it reads the latest .env
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
+    // Send via Resend API
+    let mailOk = false;
+    try {
+      const result = await sendOtpEmail(email, name, otp);
+      if (result.success) {
+        mailOk = true;
+        console.log(`[RESEND] Code ${otp} sent to ${email}`);
+      } else {
+        throw new Error(result.error?.message || 'Verification email rejected');
+      }
+    } catch (err) {
+      console.warn('!!! VERIFICATION MAIL FAILED !!!');
+      console.warn('Error:', err.message);
 
-    // Background Task (Doesn't block the UI)
-    transporter.sendMail(mailOptions)
-      .then(() => console.log(`[REAL EMAIL] Code ${otp} sent to ${email}`))
-      .catch(err => {
-        console.warn('!!! REAL EMAIL FAILED !!!');
-        console.warn('Error:', err.message);
-      });
+      // Secondary fallback to legacy Nodemailer if EMAIL_PASS is present
+      if (process.env.EMAIL_PASS) {
+        try {
+          const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
+          });
+          await transporter.sendMail({
+            from: `"BehaveGuard Security" <${process.env.EMAIL_USER}>`,
+            to: email,
+            subject: `Verification Code: ${otp}`,
+            text: `Your BehaveGuard code is: ${otp}`
+          });
+          mailOk = true;
+          console.log('[FALLBACK] Email sent via legacy SMTP');
+        } catch (smtpErr) {
+          console.error('[CRITICAL] All mail routes failed');
+        }
+      }
+    }
 
-    // Return SUCCESS immediately to the UI
+    // Return SUCCESS immediately to the UI; include OTP for local/dev to unblock flow
+    const isProd = process.env.NODE_ENV === 'production';
     return res.status(200).json({
       success: true,
-      message: 'Verification Code Pushed'
+      message: mailOk ? 'Verification code sent' : 'Email failed; use dev OTP',
+      otp: isProd ? undefined : otp.toString()
     });
   } catch (error) {
     console.error('OTP Route Error:', error);

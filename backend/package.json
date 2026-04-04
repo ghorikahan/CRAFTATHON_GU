@@ -15,6 +15,7 @@
         "jsonwebtoken": "^9.0.3",
         "bcryptjs": "^3.0.3",
         "nodemailer": "^8.0.4",
-        "twilio": "^5.13.1"
+        "twilio": "^5.13.1",
+        "resend": "^3.2.0"
     }
 }
