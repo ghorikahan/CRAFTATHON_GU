@@ -32,6 +32,7 @@ export const AuthProvider = ({ children }) => {
     scrollSpeeds: [],
     idleTimes: [],
     clickDeviations: [],
+    touchSpeeds: [],
     charCount: 0
   });
 
@@ -40,6 +41,7 @@ export const AuthProvider = ({ children }) => {
   const lastMouse = useRef({ x: null, y: null, time: Date.now() });
   const lastScrollY = useRef(0);
   const lastScrollTime = useRef(Date.now());
+  const lastTouch = useRef({ y: null, time: Date.now() });
   const lastActionTime = useRef(Date.now());
   const intervalStart = useRef(Date.now());
   const sessionStart = useRef(Date.now());
@@ -127,16 +129,32 @@ export const AuthProvider = ({ children }) => {
       lastActionTime.current = now;
     };
 
+    const touchStart = (e) => {
+      lastTouch.current = { y: e.touches[0].clientY, time: Date.now() };
+    };
+
+    const touchEnd = (e) => {
+      const now = Date.now();
+      const dy = Math.abs(e.changedTouches[0].clientY - lastTouch.current.y);
+      const dt = (now - lastTouch.current.time) / 1000;
+      if (dt > 0) buffer.current.touchSpeeds.push(dy / dt);
+      lastActionTime.current = now;
+    };
+
     window.addEventListener("keydown", keydown);
     window.addEventListener("keyup", keyup);
     window.addEventListener("mousemove", mouse);
     window.addEventListener("scroll", scroll, { passive: true });
+    window.addEventListener("touchstart", touchStart, { passive: true });
+    window.addEventListener("touchend", touchEnd, { passive: true });
 
     return () => {
       window.removeEventListener("keydown", keydown);
       window.removeEventListener("keyup", keyup);
       window.removeEventListener("mousemove", mouse);
       window.removeEventListener("scroll", scroll);
+      window.removeEventListener("touchstart", touchStart);
+      window.removeEventListener("touchend", touchEnd);
     };
   }, []);
 
@@ -175,7 +193,7 @@ export const AuthProvider = ({ children }) => {
       const clickDevVal = avgOrZero(b.clickDeviations);
 
       // Check if user is truly idle (no activity at all in this window)
-      const isIdle = b.charCount === 0 && b.mouseSpeeds.length === 0 && b.scrollSpeeds.length === 0 && b.keysHeld.length === 0;
+      const isIdle = b.charCount === 0 && b.mouseSpeeds.length === 0 && b.scrollSpeeds.length === 0 && b.keysHeld.length === 0 && b.touchSpeeds.length === 0;
 
       // Update display metrics (show zeros when idle)
       setLiveMetrics({
@@ -187,7 +205,7 @@ export const AuthProvider = ({ children }) => {
       });
 
       // Reset buffer
-      buffer.current = { keysHeld: [], keyFlights: [], mouseSpeeds: [], scrollSpeeds: [], idleTimes: [], clickDeviations: [], charCount: 0 };
+      buffer.current = { keysHeld: [], keyFlights: [], mouseSpeeds: [], scrollSpeeds: [], idleTimes: [], clickDeviations: [], touchSpeeds: [], charCount: 0 };
 
       // If idle, keep trust stable — only score when there's real activity
       if (isIdle) return;
@@ -261,6 +279,11 @@ export const AuthProvider = ({ children }) => {
     return () => clearInterval(syncInterval);
   }, [user, trustScore, riskLevel, liveMetrics]);
 
+  const resetTrustScore = () => {
+    setTrustScore(1.0);
+    setRiskLevel('safe');
+  };
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -273,7 +296,8 @@ export const AuthProvider = ({ children }) => {
       login,
       signup,
       logout,
-      updateProfile
+      updateProfile,
+      resetTrustScore
     }}>
       {children}
     </AuthContext.Provider>

@@ -72,7 +72,7 @@ const CalibrationDots = () => (
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 
 const DashboardPage = () => {
-  const { user, trustScore, riskLevel, sessionEvents, isWarmingUp, liveMetrics } = useAuth();
+  const { user, trustScore, riskLevel, sessionEvents, isWarmingUp, liveMetrics, resetTrustScore } = useAuth();
   const router = useRouter();
 
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -84,9 +84,11 @@ const DashboardPage = () => {
   const [pinError, setPinError] = useState('');
   const [dbData, setDbData] = useState({ balance: 0, history: [] });
   const [todaySpend, setTodaySpend] = useState(0);
+  const [todayIncome, setTodayIncome] = useState(0);
 
   const pinLockActive = useRef(false);
   const entryTimeRef = useRef(Date.now());
+  const lastVerifiedTime = useRef(0); // Cooldown after PIN entry
   const lastWarningTime = useRef(0);
   const gridRef = useRef(null);
 
@@ -97,12 +99,20 @@ const DashboardPage = () => {
         const res = await axios.get('http://localhost:5000/api/transfer/history', { withCredentials: true });
         if (res.data.success) {
           setDbData({ balance: res.data.balance, history: res.data.history });
-          const today = new Date().toDateString();
           const currentUserId = user?._id || user?.id;
-          const spend = res.data.history
-            .filter(tx => tx.sender?._id === currentUserId && new Date(tx.timestamp).toDateString() === today)
+          const today = new Date().toDateString();
+          const todayH = res.data.history.filter(tx => new Date(tx.timestamp).toDateString() === today);
+
+          const spend = todayH
+            .filter(tx => tx.sender?._id === currentUserId && tx.sender?._id !== tx.receiver?._id)
             .reduce((acc, curr) => acc + curr.amount, 0);
+
+          const income = todayH
+            .filter(tx => tx.receiver?._id === currentUserId)
+            .reduce((acc, curr) => acc + curr.amount, 0);
+
           setTodaySpend(spend);
+          setTodayIncome(income);
         }
       } catch { console.error('Ledger sync failed.'); }
     };
@@ -161,7 +171,10 @@ const DashboardPage = () => {
     if (isWarmingUp) return;
     // Extra 5 s grace after warmup ends (total ~10 s from login)
     const isGracePeriod = (Date.now() - entryTimeRef.current) < 10000;
-    if (riskLevel === 'danger' && !isGracePeriod && !pinLockActive.current) {
+    // 30s cooldown after successful PIN entry
+    const inCooldown = (Date.now() - lastVerifiedTime.current) < 30000;
+
+    if (riskLevel === 'danger' && !isGracePeriod && !inCooldown && !pinLockActive.current) {
       pinLockActive.current = true;
       setWarning(null);
       setShowAnomalyModal(true);
@@ -216,6 +229,8 @@ const DashboardPage = () => {
         setPinInput(['', '', '', '', '', '']);
         setPinError('');
         pinLockActive.current = false;
+        lastVerifiedTime.current = Date.now(); // Start cooldown
+        resetTrustScore(); // Reset the behavioral engine's state for this session
       }
     } catch {
       setPinError('Verification node unreachable. Redirecting…');
@@ -495,13 +510,13 @@ const DashboardPage = () => {
           </motion.div>
 
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-            <StatCard label="Today's Outflow">
+            <StatCard label="Daily Net Flow">
               <div className="flex items-end justify-between">
-                <h2 className="font-sora font-black text-2xl text-red-400">
-                  ₹{todaySpend.toLocaleString('en-IN')}
+                <h2 className={clsx("font-sora font-black text-2xl", (todayIncome - todaySpend) >= 0 ? "text-emerald-400" : "text-red-400")}>
+                  {todayIncome - todaySpend >= 0 ? '+' : ''} ₹{(todayIncome - todaySpend).toLocaleString('en-IN')}
                 </h2>
-                <div className="w-8 h-8 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
-                  <TrendingDown size={14} className="text-red-400" />
+                <div className={clsx("w-8 h-8 rounded-xl border flex items-center justify-center", (todayIncome - todaySpend) >= 0 ? "bg-emerald-500/10 border-emerald-500/20" : "bg-red-500/10 border-red-500/20")}>
+                  {(todayIncome - todaySpend) >= 0 ? <TrendingUp size={14} className="text-emerald-400" /> : <TrendingDown size={14} className="text-red-400" />}
                 </div>
               </div>
             </StatCard>
@@ -713,22 +728,27 @@ const DashboardPage = () => {
                       </td>
                     </tr>
                   ) : recentTransactions.map(tx => {
-                    const isOutgoing = tx.sender?._id === (user?._id || user?.id);
+                    const currentId = (user?._id || user?.id);
+                    const isDeposit = tx.sender?._id === tx.receiver?._id;
+                    const isOutgoing = !isDeposit && tx.sender?._id === currentId;
                     const counterParty = isOutgoing ? tx.receiver : tx.sender;
+
+                    const label = isDeposit ? 'Deposit' : (isOutgoing ? 'Sent Funds' : 'Income Received');
+                    const colorClass = (isDeposit || !isOutgoing) ? 'text-emerald-400' : 'text-red-400';
+                    const bgSecondary = (isDeposit || !isOutgoing) ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20';
+
                     return (
                       <tr key={tx._id} className="group hover:bg-white/[0.02] transition-colors cursor-pointer">
                         <td className="py-5 px-2">
                           <div className="flex items-center gap-4">
                             <div className={clsx(
                               'w-10 h-10 rounded-xl flex items-center justify-center font-black text-base shrink-0',
-                              isOutgoing
-                                ? 'bg-accent/10 text-accent border border-accent/20'
-                                : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                              bgSecondary
                             )}>
-                              {counterParty?.name?.[0]?.toUpperCase() || '?'}
+                              {counterParty?.name?.[0]?.toUpperCase() || 'D'}
                             </div>
                             <div>
-                              <p className="font-bold text-sm text-white">{counterParty?.name || 'External Node'}</p>
+                              <p className="font-bold text-sm text-white">{isDeposit ? 'Self Node (Card)' : (counterParty?.name || 'External Node')}</p>
                               <p className="text-[10px] text-white/30 font-medium mt-0.5">
                                 {new Date(tx.timestamp).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
                               </p>
@@ -738,27 +758,23 @@ const DashboardPage = () => {
                         <td className="py-5 px-2">
                           <span className={clsx(
                             'px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest',
-                            isOutgoing
-                              ? 'bg-white/[0.04] text-white/30'
-                              : 'bg-emerald-500/15 text-emerald-400'
+                            isOutgoing ? 'bg-red-500/15 text-red-400' : 'bg-emerald-500/15 text-emerald-400'
                           )}>
-                            {isOutgoing ? 'Withdrawal' : 'Deposit'}
+                            {label}
                           </span>
                         </td>
                         <td className="py-5 px-2 text-right">
-                          <p className={clsx('font-black text-lg', isOutgoing ? 'text-white' : 'text-emerald-400')}>
-                            {isOutgoing
-                              ? `− ₹${tx.amount.toLocaleString('en-IN')}`
-                              : `+ ₹${tx.amount.toLocaleString('en-IN')}`}
+                          <p className={clsx('font-black text-lg', colorClass)}>
+                            {isOutgoing ? '−' : '+'} ₹{tx.amount.toLocaleString('en-IN')}
                           </p>
-                          <p className="text-[9px] text-white/25 mt-0.5">Completed</p>
+                          <p className="text-[9px] text-white/25 mt-0.5">Hash Verified</p>
                         </td>
                         <td className="py-5 px-2 text-right">
                           <div className="flex items-center justify-end gap-2">
                             <div className="h-1 w-14 bg-white/[0.06] rounded-full overflow-hidden">
-                              <div className="h-full bg-emerald-400 rounded-full" style={{ width: '98%' }} />
+                              <div className={clsx('h-full rounded-full', isOutgoing ? 'bg-white/20' : 'bg-emerald-400')} style={{ width: isOutgoing ? '45%' : '98%' }} />
                             </div>
-                            <span className="text-[10px] font-bold text-white/30">0.98</span>
+                            <span className="text-[10px] font-bold text-white/30">{isOutgoing ? 'Low' : 'Safe'}</span>
                           </div>
                         </td>
                       </tr>
